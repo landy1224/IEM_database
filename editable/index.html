@@ -62,6 +62,10 @@ td.name{white-space:normal;min-width:180px}
 td.name .sub{display:block;font-size:11.5px;color:var(--muted)}
 td.name .nm{display:flex;gap:9px;align-items:flex-start}
 .th{flex:none;width:44px;height:44px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:5px}
+.photo{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.photo .prev{width:96px;height:96px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:6px;flex:none}
+.photo .none{width:96px;height:96px;border:1px dashed var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11.5px;color:var(--muted);flex:none;text-align:center}
+.photo .ctl{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
 .pic{display:block;width:100%;max-height:230px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px;margin:2px 0 6px}
 .est{color:var(--est)}
 .est::after{content:"估";font-family:var(--f-body);font-size:10px;margin-left:2px;padding:0 3px;border-radius:3px;background:var(--est-soft);vertical-align:1px}
@@ -206,6 +210,7 @@ function subMode(){
 }
 const subTest=(it,k)=>k===PF?isPF(it):sub(it)===k;
 const $=s=>document.querySelector(s);
+const imgSrc=it=>it.imgAsset?"/_blob/"+it.imgAsset:(it.img||"");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=v=>{if(v==null||v==="")return null;const a=Math.abs(v);return a>=100?v.toFixed(0):a>=10?v.toFixed(1):a>=1?v.toFixed(2):v.toFixed(2)};
 function cell(it,k,mult=1){const v=it.n?.[k];if(v==null)return '<span class="na">—</span>';const t=fmt(v*mult);return it.est?.[k]?`<span class="est" title="${esc(it.est[k])}">${t}</span>`:t}
@@ -280,7 +285,7 @@ function render(){
   const arrow=k=>S.sort===k?(S.dir>0?" ▲":" ▼"):"";
   $("#thead").innerHTML=`<tr><th class="l" data-k="name">品項${arrow("name")}</th><th class="l">基準</th>${cols.map(k=>`<th data-k="${k}">${NUT[k][1]} <span class="u">${NUT[k][2]}</span>${arrow(k)}</th>`).join("")}</tr>`;
   const r=filtered();
-  $("#tbody").innerHTML=r.map(it=>`<tr data-id="${it.id}" class="${S.sel===it.id?"sel":""}"><td class="l name"><div class="nm">${it.img?`<img class="th" loading="lazy" src="${esc(it.img)}" alt="" onerror="this.remove()">`:""}<div>${esc(it.name)}${it.status&&it.status!=="供應中"?` <span class="pill off">${esc(it.status)}</span>`:""}${(it.diseases||[]).map(d=>` <span class="pill ok">${esc(d)}</span>`).join("")}<span class="sub">${esc([it.brand,[it.category,...(it.alsoIn||[])].join("／"),it.group].filter(Boolean).join("・"))}</span></div></div></td><td class="l small">${basisLabel(it)}</td>${cols.map(k=>`<td class="num">${cell(it,k)}</td>`).join("")}</tr>`).join("");
+  $("#tbody").innerHTML=r.map(it=>`<tr data-id="${it.id}" class="${S.sel===it.id?"sel":""}"><td class="l name"><div class="nm">${imgSrc(it)?`<img class="th" loading="lazy" src="${esc(imgSrc(it))}" alt="" onerror="this.remove()">`:""}<div>${esc(it.name)}${it.status&&it.status!=="供應中"?` <span class="pill off">${esc(it.status)}</span>`:""}${(it.diseases||[]).map(d=>` <span class="pill ok">${esc(d)}</span>`).join("")}<span class="sub">${esc([it.brand,[it.category,...(it.alsoIn||[])].join("／"),it.group].filter(Boolean).join("・"))}</span></div></div></td><td class="l small">${basisLabel(it)}</td>${cols.map(k=>`<td class="num">${cell(it,k)}</td>`).join("")}</tr>`).join("");
   const em=$("#empty");
   if(!S.loaded){em.hidden=false}
   else if(!S.items.length){em.hidden=false;em.textContent=S.canWrite?"資料庫還是空的。按右上角「新增品項」加入第一筆。":"資料庫還是空的。"}
@@ -311,7 +316,7 @@ function renderSheet(){
   else{unitOpts.push([it.basisUnit,1,it.basisUnit]);(it.servings||[]).forEach((s,i)=>unitOpts.push(["sv"+i,s.amount,s.label]));if(it.prep?.scoopG)unitOpts.push(["scoop",it.prep.scoopG,"匙（"+it.prep.scoopG+" g）"])}
   el.innerHTML=`
    <div><div class="row" style="gap:6px;margin-bottom:6px"><span class="pill ${it.status==="供應中"?"ok":"off"}">${esc(it.status||"供應中")}</span>${[it.category,...(it.alsoIn||[])].map(c=>`<span class="pill">${esc(c)}</span>`).join("")}${it.group?`<span class="pill">${esc(it.group)}</span>`:""}${sub(it)?`<span class="pill">${esc(sub(it))}</span>`:""}${ages(it).map(x=>`<span class="pill">${esc(x)}</span>`).join("")}${it.general?'<span class="pill">一般配方</span>':""}${(it.diseases||[]).map(d=>`<span class="pill ok">${esc(d)}</span>`).join("")}</div>
-   ${it.img?`<img class="pic" src="${esc(it.img)}" alt="${esc(it.name)}" onerror="this.remove()">`:""}
+   ${imgSrc(it)?`<img class="pic" src="${esc(imgSrc(it))}" alt="${esc(it.name)}" onerror="this.remove()">`:""}
    <h2>${esc(it.name)}</h2>${it.brand?`<div class="small">${esc(it.brand)}</div>`:""}</div>
    ${it.note?`<div class="note">${esc(it.note)}</div>`:""}
    ${missing.length?`<div class="note plain">${esc(S.preset)} 需要但尚無資料：${missing.join("、")}</div>`:""}
@@ -386,6 +391,10 @@ function renderForm(){
   <form class="ed" id="ed">
    <label>品名 *<input name="name" required value="${esc(it.name)}"></label>
    <div class="g2"><label>品牌／廠商<input name="brand" value="${esc(it.brand)}"></label><label>別名（空格分隔，供搜尋）<input name="aliases" value="${esc(it.aliases)}"></label></div>
+   <fieldset><legend>產品照片</legend><div class="photo"><span id="phBox"></span><div class="ctl">
+     ${S.assets?`<div class="row"><label class="btn" style="display:inline-block">選擇照片<input type="file" id="phFile" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif" hidden></label><button class="btn" type="button" id="phDel">移除照片</button><button class="btn" type="button" id="phUndo" hidden>復原</button></div>
+     <div class="small" id="phMsg">可選擇檔案，或在此表單中直接貼上（Ctrl+V）截圖。照片會縮到長邊 1000 px 後上傳。</div>`:'<div class="small">你沒有上傳照片的權限（需為擁有者或編輯者）。</div>'}
+   </div></div></fieldset>
    <div class="g2"><label>類別<select name="category">${CATS.map(c=>`<option ${c===it.category?"selected":""}>${c}</option>`).join("")}</select></label><label>食物群／子類<input name="group" value="${esc(it.group)}"></label></div>
    <fieldset><legend>同時列在其他類別</legend><div class="row">${CATS.map(c=>`<label class="small" style="flex-direction:row;gap:3px"><input type="checkbox" name="also" value="${c}" ${(it.alsoIn||[]).includes(c)?"checked":""}>${c}</label>`).join("")}</div></fieldset>
    <fieldset><legend>適用疾病（特殊配方用）</legend><div class="row">${DISEASES.map(d=>`<label class="small" style="flex-direction:row;gap:3px"><input type="checkbox" name="dz" value="${d}" ${(it.diseases||[]).includes(d)?"checked":""}>${d}</label>`).join("")}</div></fieldset>
@@ -407,9 +416,23 @@ function renderForm(){
    <div class="row"><button class="btn primary" type="submit">${asVer?"儲存新版本":"儲存"}</button><button class="btn" type="button" id="cancel">取消</button>
      ${!isNew&&!asVer?'<span style="flex:1"></span><button class="btn danger" type="button" id="del">刪除</button>':""}</div>
   </form>`;
-  $("#cancel").onclick=()=>{S.mode="view";S.asVersion=false;renderSheet()};
+  const ph={mode:"keep",blob:null,url:null};
+  const showPh=()=>{const src=ph.mode==="new"?ph.url:ph.mode==="remove"?"":imgSrc(it);
+    $("#phBox").innerHTML=src?`<img class="prev" src="${esc(src)}" alt="照片預覽" onerror="this.outerHTML='<div class=none>照片無法顯示</div>'">`:'<div class="none">尚無照片</div>';
+    if($("#phDel"))$("#phDel").hidden=!src;if($("#phUndo"))$("#phUndo").hidden=ph.mode==="keep"};
+  const takePh=async file=>{const m=$("#phMsg");if(!file)return;m.textContent="處理照片中…";
+    try{const b=await shrinkImg(file);if(ph.url)URL.revokeObjectURL(ph.url);ph.mode="new";ph.blob=b;ph.url=URL.createObjectURL(b);m.textContent=`已選擇新照片（${Math.round(b.size/1024)} KB），按「儲存」後上傳。`;showPh()}
+    catch(e){m.textContent=e.message==="size"?"檔案超過 20 MB，請換一張。":"無法讀取這個格式，請改用 JPG 或 PNG。"}};
+  showPh();
+  if(S.assets){
+    $("#phFile").onchange=e=>takePh(e.target.files[0]);
+    $("#phDel").onclick=()=>{ph.mode="remove";ph.blob=null;$("#phFile").value="";$("#phMsg").textContent="儲存後會移除照片。";showPh()};
+    $("#phUndo").onclick=()=>{ph.mode="keep";ph.blob=null;$("#phFile").value="";$("#phMsg").textContent="已復原為原本的照片。";showPh()};
+    $("#ed").addEventListener("paste",e=>{const f=[...(e.clipboardData?.files||[])].find(x=>x.type.startsWith("image/"));if(f){e.preventDefault();takePh(f)}});
+  }
+  $("#cancel").onclick=()=>{if(ph.url)URL.revokeObjectURL(ph.url);S.mode="view";S.asVersion=false;renderSheet()};
   const del=$("#del");if(del)del.onclick=async()=>{if(!del.dataset.arm){del.dataset.arm=1;del.textContent="再按一次確認刪除";return}
-    try{await S.db.doc("items/"+it.id).delete();S.sel=null;S.mode="view";toast("已刪除");renderSheet()}catch(e){fail(e)}};
+    try{await S.db.doc("items/"+it.id).delete();if(it.imgAsset)dropAsset(it.imgAsset,it.id);S.sel=null;S.mode="view";toast("已刪除");renderSheet()}catch(e){fail(e)}};
   $("#ed").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);const num=k=>{const v=f.get(k);return v===""||v==null?null:parseFloat(v)};
     const n={},est={};const en=f.get("estNote")||"估算值";
     NUTS.forEach(([k])=>{const v=num("n_"+k);if(v!=null&&!isNaN(v)){n[k]=v;if(f.get("e_"+k))est[k]=en}});
@@ -420,7 +443,13 @@ function renderForm(){
       basisAmount:num("basisAmount")||100,basisUnit:f.get("basisUnit"),servings,n,est,status:f.get("status"),version:f.get("version")||"1",
       source:f.get("source")||"",checkedAt:f.get("checkedAt")||"",note:f.get("note")||"",updatedAt:new Date().toISOString().slice(0,10)};
     if(hasPrep)doc.prep=prep;
-    if(it.img)doc.img=it.img;
+    const oldAsset=it.imgAsset||null;
+    if(ph.mode==="keep"){if(it.img)doc.img=it.img;if(it.imgAsset)doc.imgAsset=it.imgAsset}
+    else if(ph.mode==="new"){
+      const sb=e.target.querySelector("button[type=submit]");sb.disabled=true;$("#phMsg").textContent="上傳照片中…";
+      try{doc.imgAsset=(await uploadImg(ph.blob)).id}
+      catch(err){sb.disabled=false;$("#phMsg").textContent=assetErr(err);toast("照片上傳失敗，資料尚未儲存");return}
+    }
     if(f.get("general"))doc.general=true;
     if(f.get("per100k"))doc.per100k=true;
     const spec={hydro:f.get("hydro")||"",psrc:f.get("psrc")||"",whey:f.get("whey")||"",mct:num("mct")};
@@ -431,9 +460,32 @@ function renderForm(){
       if(isNew){const ref=S.db.collection("items").doc();await ref.set(doc);S.sel=ref.id;toast("已新增")}
       else if(asVer){const ref=S.db.collection("items").doc();doc.prevId=it.id;await ref.set(doc);await S.db.doc("items/"+it.id).update({status:"已改版",nextId:ref.id});S.sel=ref.id;toast("已建立新版本，舊版標記為已改版")}
       else{await S.db.doc("items/"+it.id).set({...doc,...(it.prevId?{prevId:it.prevId}:{}),...(it.nextId?{nextId:it.nextId}:{})});toast("已儲存")}
+      /* 更換或移除照片後，舊照片若已沒有任何品項使用就刪除（建立新版本時舊版仍保留照片，不刪） */
+      if(!isNew&&!asVer&&oldAsset&&doc.imgAsset!==oldAsset)dropAsset(oldAsset,it.id);
+      if(ph.url)URL.revokeObjectURL(ph.url);
       S.mode="view";S.asVersion=false;renderSheet();
     }catch(err){fail(err)}};
 }
+/* 照片：縮到長邊 1000 px、轉 JPEG；瀏覽器無法解碼時，可接受的格式直接上傳原檔 */
+const OK_TYPES=["image/jpeg","image/png","image/webp","image/gif"];
+async function shrinkImg(file){
+  if(file.size>20*1024*1024)throw new Error("size");
+  try{
+    const bmp=await createImageBitmap(file);const k=Math.min(1,1000/Math.max(bmp.width,bmp.height));
+    const c=document.createElement("canvas");c.width=Math.max(1,Math.round(bmp.width*k));c.height=Math.max(1,Math.round(bmp.height*k));
+    const g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(bmp,0,0,c.width,c.height);bmp.close?.();
+    const b=await new Promise(r=>c.toBlob(r,"image/jpeg",0.85));if(b&&b.size)return b;
+  }catch(e){}
+  if(OK_TYPES.includes(file.type))return file;
+  throw new Error("fmt");
+}
+async function uploadImg(blob){
+  const t=OK_TYPES.includes(blob.type)?blob.type:"image/jpeg";
+  try{return await S.assets.upload(blob,{type:t})}
+  catch(e){if(e?.code==="store_unavailable"){await new Promise(r=>setTimeout(r,1200));return await S.assets.upload(blob,{type:t})}throw e}
+}
+function assetErr(e){const c=e?.code;return c==="too_large"?"照片太大，請換一張較小的。":c==="unsupported_type"?"不支援這個格式，請改用 JPG 或 PNG。":c==="quota_or_state"?"照片儲存空間已滿。":c==="rate_limited"?"操作太頻繁，請稍候再試。":c==="not_granted"||c==="capability_disabled"?"目前無法上傳照片。":"照片上傳失敗，請稍後再試。"}
+function dropAsset(id,exceptItem){if(!S.assets||S.items.some(x=>x.id!==exceptItem&&x.imgAsset===id))return;S.assets.delete(id).catch(()=>{})}
 function fail(e){if(e?.code==="invalid_argument"){S.canWrite=false;toast("你目前只有檢視權限，無法修改資料");refreshWrite()}else if(e?.code==="quota_exceeded")toast("資料庫容量已滿，請刪除不用的品項");else toast("儲存失敗，請稍後再試")}
 function refreshWrite(){$("#addBtn").hidden=!S.canWrite;render();renderSheet()}
 $("#addBtn").onclick=()=>{S.mode="new";S.asVersion=false;renderSheet();if(innerWidth<=980)$("#sheet").scrollIntoView({behavior:"smooth"})};
@@ -456,7 +508,7 @@ const SNAP="2026-11-12";
 let seed=null;
 const loadSeed=async()=>{if(!seed){const r=await fetch("seed.json");if(!r.ok)throw new Error("seed");seed=await r.json()}return seed};
 async function readOnly(msg){
-  S.db=null;S.canWrite=false;
+  S.db=null;S.canWrite=false;S.assets=null;
   try{S.items=await loadSeed();S.loaded=true;$("#exportBtn").hidden=false;$("#addBtn").hidden=true;$("#mode").textContent=msg;render();renderSheet()}
   catch(e){S.loaded=true;S.items=[];render();const em=$("#empty");em.hidden=false;em.textContent="無法載入資料。"}
 }
@@ -497,6 +549,7 @@ async function runImport(){
   S.db=db;
   let user=null;try{user=await window.claude.use("user")}catch(e){}
   let w=null;try{w=user?await user.can("data.write"):null}catch(e){}
+  try{S.assets=await window.claude.use("assets")}catch(e){S.assets=null}
   S.canWrite=w!==false;   /* null＝平台未告知：先保留編輯，寫入被拒時 fail() 會改成唯讀 */
   db.collection("items").onSnapshot(snap=>{
     if(!snap.metadata.fromCache)clearTimeout(slow);
