@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>代謝營養主資料庫</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sticky search bar, results table left, item sheet right (stacks on phone) */
+:root{
+  --bg:#f5f6f4; --surface:#ffffff; --sunk:#eceeea; --line:#d9ddd6; --fg:#1d2420; --muted:#5f6a63;
+  --accent:#17675d; --accent-soft:#dcece8; --est:#9a5b00; --est-soft:#fbefd9; --bad:#a3322a; --bad-soft:#f8e1de;
+  --f-body:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141917; --surface:#1b221f; --sunk:#232b27; --line:#33403a; --fg:#e4e9e5; --muted:#9aa7a0;
+  --accent:#5cc2b2; --accent-soft:#1f3a35; --est:#f0b25a; --est-soft:#3a2c17; --bad:#f08a80; --bad-soft:#3d2220; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141917; --surface:#1b221f; --sunk:#232b27; --line:#33403a; --fg:#e4e9e5; --muted:#9aa7a0;
+  --accent:#5cc2b2; --accent-soft:#1f3a35; --est:#f0b25a; --est-soft:#3a2c17; --bad:#f08a80; --bad-soft:#3d2220; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.bar-in{padding-block:12px;display:flex;flex-direction:column;gap:10px;max-width:1400px;margin:0 auto}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+h1{font-size:17px;margin:0;font-weight:700;letter-spacing:.02em;flex:1;min-width:0}
+h1 small{font-weight:400;color:var(--muted);font-size:12px;margin-left:8px}
+.search{flex:1 1 280px;min-width:0;position:relative}
+.search input{width:100%;font:inherit;font-size:15px;padding:9px 12px 9px 34px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted)}
+input,select,textarea,button{font:inherit;color:inherit}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 11px;cursor:pointer;color:var(--muted);font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface);font-weight:500}
+.dz-more{border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--muted);padding:6px 10px;font-size:13px;cursor:pointer}
+.dz-more.on{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:500}
+.disc{font-size:12px;color:var(--est);background:var(--est-soft);border-radius:6px;padding:5px 10px}
+.lbl{font-size:12px;color:var(--muted);letter-spacing:.04em}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 10px;font-size:12.5px;cursor:pointer;color:var(--muted)}
+.chip .u{opacity:.65;font-size:11px;margin-left:2px}
+.chip[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);font-weight:500}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:6px 12px;cursor:pointer;font-size:13px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:500}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+main{max-width:1400px;margin:0 auto;padding-block:14px 40px;display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:16px;align-items:start}
+@media (max-width:980px){main{grid-template-columns:minmax(0,1fr)}}
+.tablebox{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow-x:auto;min-width:0}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:7px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th{font-size:12px;font-weight:500;color:var(--muted);background:var(--sunk);position:sticky;top:0;cursor:pointer;user-select:none}
+th.l,td.l{text-align:left}
+th .u{font-weight:400;opacity:.8}
+td.num{font-family:var(--f-num);font-size:13px}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--sunk)}
+tbody tr.sel{background:var(--accent-soft)}
+td.name{white-space:normal;min-width:180px}
+td.name .sub{display:block;font-size:11.5px;color:var(--muted)}
+td.name .nm{display:flex;gap:9px;align-items:flex-start}
+.th{flex:none;width:44px;height:44px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:5px}
+.pic{display:block;width:100%;max-height:230px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px;margin:2px 0 6px}
+.est{color:var(--est)}
+.est::after{content:"估";font-family:var(--f-body);font-size:10px;margin-left:2px;padding:0 3px;border-radius:3px;background:var(--est-soft);vertical-align:1px}
+.na{color:var(--muted);opacity:.6}
+.pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;background:var(--sunk);color:var(--muted);margin-right:4px}
+.pill.warn{background:var(--est-soft);color:var(--est)}
+.pill.off{background:var(--bad-soft);color:var(--bad)}
+.pill.ok{background:var(--accent-soft);color:var(--accent)}
+.meta-line{font-size:12.5px;color:var(--muted);padding:8px 2px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+aside.sheet{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 150px);max-height:calc(100vh - 170px);overflow:auto;display:flex;flex-direction:column;gap:14px;min-width:0}
+@media (max-width:980px){aside.sheet{position:static;max-height:none}}
+.sheet h2{font-size:18px;margin:0;text-wrap:balance}
+.sheet h3{font-size:12px;letter-spacing:.06em;color:var(--muted);margin:0 0 6px;font-weight:500}
+.kv{display:grid;grid-template-columns:auto 1fr 1fr;gap:0;font-variant-numeric:tabular-nums}
+.kv.k4{grid-template-columns:auto 1fr 1fr 1fr}
+.kv>div{padding:4px 6px;border-bottom:1px solid var(--line)}
+.kv .h{font-size:11.5px;color:var(--muted);background:var(--sunk)}
+.kv .v{font-family:var(--f-num);text-align:right;font-size:13px}
+.calc{background:var(--sunk);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.calc .row input,.calc .row select{padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);min-width:0}
+.calc input[type=number]{width:96px;font-family:var(--f-num)}
+.out{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
+.out div{background:var(--surface);border-radius:6px;padding:6px 8px}
+.out b{display:block;font-family:var(--f-num);font-size:15px;font-weight:500}
+.out span{font-size:11px;color:var(--muted)}
+.osmo{margin-top:4px;color:var(--fg)}
+.gh{font-size:11px;letter-spacing:.06em;color:var(--accent);padding:8px 6px 2px;font-weight:500}
+.kv .gh{border-bottom:1px solid var(--line)}
+.est-txt{color:var(--est)}
+.note{font-size:12.5px;padding:8px 10px;border-radius:6px;background:var(--est-soft);color:var(--fg)}
+.note.plain{background:var(--sunk)}
+.small{font-size:12px;color:var(--muted)}
+.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+form.ed{display:flex;flex-direction:column;gap:10px}
+form.ed label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+form.ed input,form.ed select,form.ed textarea{padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font-size:13.5px;min-width:0}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ng{display:grid;grid-template-columns:1fr 90px auto;gap:4px 8px;align-items:center;font-size:12.5px}
+.ng input[type=number]{font-family:var(--f-num)}
+.ng .chk{font-size:11px;color:var(--est);display:flex;gap:3px;align-items:center}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:0;min-width:0}
+legend{font-size:12px;color:var(--muted);padding:0 4px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;z-index:20}
+@media (prefers-reduced-motion:no-preference){tbody tr{transition:background .12s}}
+</style>
+
+<header class="bar"><div class="wrap"><div class="bar-in">
+  <div class="row">
+    <h1>代謝營養主資料庫<small id="count">載入中…</small></h1>
+    <button class="btn" id="exportBtn" hidden>匯出 CSV</button>
+    <button class="btn primary" id="addBtn" hidden>＋ 新增品項</button>
+  </div>
+  <div class="disc">資料僅供臨床參考，使用前請對照台灣實際產品包裝標示或廠商資料；橘色「估」為估算值。<span id="mode">連線資料庫中…</span></div>
+  <div class="note plain" id="importBox" hidden></div>
+  <div class="row">
+    <label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="搜尋品名、品牌、別名（例：白米、豆腐、Anamix）" autocomplete="off"></label>
+    <div class="seg" id="preset" role="group" aria-label="依疾病篩選"></div>
+    <select id="dzMore" class="dz-more" aria-label="其他疾病"></select>
+  </div>
+  <div class="row" id="cats"></div>
+  <div class="row" id="ages"></div>
+  <div class="row" id="subs"></div>
+</div></div></header>
+
+<div class="wrap"><main>
+  <section style="min-width:0">
+    <div class="tablebox"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table>
+      <div class="empty" id="empty">正在連線資料庫…</div></div>
+    <div class="meta-line"><span>數值以每 100 g、每 100 mL 或每 1 份為基準（見「基準」欄）。<span class="est">橘色</span>為估算值，「—」為尚無資料。</span>
+      <div class="row" style="gap:12px"><label class="small"><input type="checkbox" id="showGen"> 含一般配方</label>
+      <label class="small"><input type="checkbox" id="showOld"> 顯示已改版／停產</label></div></div>
+  </section>
+  <aside class="sheet" id="sheet"><div class="empty">點選左側品項，查看完整營養素並換算份量。</div></aside>
+</main></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* [key, 名稱, 單位, 分組] */
+const NUTS=[
+ ["kcal","熱量","kcal","巨量營養素"],["pro","蛋白質","g","巨量營養素"],["fat","脂肪","g","巨量營養素"],["cho","醣類","g","巨量營養素"],["peq","蛋白質當量","g","巨量營養素"],
+ ["fiber","膳食纖維","g","巨量營養素"],["lac","乳糖","g","巨量營養素"],["gal","半乳糖","mg","巨量營養素"],
+ ["sfat","飽和脂肪","g","脂肪酸"],["chol","膽固醇","mg","脂肪酸"],["la","亞麻油酸","mg","脂肪酸"],["ala","α-次亞麻油酸","mg","脂肪酸"],["mct","MCT","g","脂肪酸"],
+ ["phe","Phe","mg","胺基酸"],["tyr","Tyr","mg","胺基酸"],["leu","Leu","mg","胺基酸"],["ile","Ile","mg","胺基酸"],["val","Val","mg","胺基酸"],
+ ["met","Met","mg","胺基酸"],["thr","Thr","mg","胺基酸"],["lys","Lys","mg","胺基酸"],["trp","Trp","mg","胺基酸"],
+ ["na","鈉","mg","礦物質"],["k","鉀","mg","礦物質"],["cl","氯","mg","礦物質"],["ca","鈣","mg","礦物質"],["phos","磷","mg","礦物質"],["mag","鎂","mg","礦物質"],
+ ["fe","鐵","mg","礦物質"],["zn","鋅","mg","礦物質"],["cu","銅","µg","礦物質"],["mn","錳","mg","礦物質"],["iod","碘","µg","礦物質"],["se","硒","µg","礦物質"],["cr","鉻","µg","礦物質"],["mo","鉬","µg","礦物質"],
+ ["vita","維生素 A","µg RE","維生素"],["vitd","維生素 D","µg","維生素"],["vite","維生素 E","mg α-TE","維生素"],["vitk","維生素 K","µg","維生素"],["vitc","維生素 C","mg","維生素"],
+ ["b1","維生素 B1","mg","維生素"],["b2","維生素 B2","mg","維生素"],["b6","維生素 B6","mg","維生素"],["b12","維生素 B12","µg","維生素"],["niacin","菸鹼素","mg NE","維生素"],
+ ["folate","葉酸","µg","維生素"],["pant","泛酸","mg","維生素"],["biotin","生物素","µg","維生素"],["choline","膽素","mg","維生素"],
+ ["carn","左旋肉鹼","mg","其他"],["dha","DHA","mg","其他"]];
+const NUT=Object.fromEntries(NUTS.map(n=>[n[0],n]));
+const groupRows=(keys,row,cols)=>{let g="";return keys.map(k=>{const h=NUT[k][3]!==g?(g=NUT[k][3],`<div class="gh" style="grid-column:1/-1">${g}</div>`):"";return h+row(k)}).join("")};
+const C_MAC=["kcal","pro","peq","fat","cho"];
+const COLS={"PKU":["kcal","pro","peq","phe","tyr"],"MSUD":["kcal","pro","peq","leu","ile","val"],"GA-1/GA-2":["kcal","pro","peq","lys","trp"],"Cit 1":["kcal","pro","peq","lys"],"Cit 2":["kcal","pro","fat","cho","lac"],"尿素循環代謝異常":["kcal","pro","peq","lys"],"脂肪酸氧化":["kcal","pro","fat","cho"],"HCU/HCY":["kcal","pro","peq","met"],
+ "MMA/PA":["kcal","pro","peq","ile","val","met","thr"],"IVA/HMG":["kcal","pro","peq","fat","leu"],"TYR（高酪胺酸血症）":["kcal","pro","peq","phe","tyr"],"高甲硫胺酸血症":["kcal","pro","peq","met"],"亞硫酸鹽氧化酶缺乏症":["kcal","pro","peq","met"],"高離胺酸血症":["kcal","pro","peq","lys","trp"],"NKH（非酮性高甘胺酸血症）":C_MAC,
+ "膽汁滯留／膽酸合成障礙":["kcal","pro","fat","cho","ca"],"高乳糜微粒血症／脂質營養不良":["kcal","pro","fat","cho"],"半乳糖血症":["kcal","pro","cho","lac","gal"],
+ "一般／早產":["kcal","pro","fat","cho","ca","phos","na"],
+ "全部":NUTS.filter(n=>n[3]==="巨量營養素"||n[3]==="胺基酸"||n[0]==="ca").map(n=>n[0])};
+const colsOf=p=>COLS[p]||C_MAC;
+/* 疾病按鈕：常用 8 顆釘選，其餘收在「其他疾病」下拉 */
+const MAIN=["PKU","MSUD","GA-1/GA-2","Cit 1","Cit 2","尿素循環代謝異常","脂肪酸氧化","HCU/HCY"];
+const SPECIAL=["一般／早產","全部"];
+const MORE=[["有機酸血症",["MMA/PA","IVA/HMG"]],["其他胺基酸代謝",["TYR（高酪胺酸血症）","高甲硫胺酸血症","亞硫酸鹽氧化酶缺乏症","高離胺酸血症","NKH（非酮性高甘胺酸血症）"]],["肝膽與脂質",["膽汁滯留／膽酸合成障礙","高乳糜微粒血症／脂質營養不良","GSD（肝醣儲積症）","ALD"]],["其他罕見疾病",["髮-肝-腸症候群／WAS","半乳糖血症","PDH 缺乏","粒線體疾病","生物素相關"]]];
+/* 疾病鍵 → 品項 diseases 標籤（GEN 為泛稱標籤，不單獨決定顯示） */
+const GEN=["胺基酸代謝疾病","先天性代謝異常"];
+const DZDEF={"PKU":["PKU","PKU+SI"],"MSUD":["MSUD"],"GA-1/GA-2":["GA1","GA2"],"Cit 1":["瓜胺酸血症"],"Cit 2":["瓜胺酸血症II型"],"尿素循環代謝異常":["UCD"],"脂肪酸氧化":["FAOD","LC-FAOD"],"HCU/HCY":["HCU"],
+ "MMA/PA":["MMA","PA"],"IVA/HMG":["IVA","HMG","3-MCC","白胺酸代謝有機酸血症"],"TYR（高酪胺酸血症）":["TYR"],"高甲硫胺酸血症":["高甲硫胺酸血症"],"亞硫酸鹽氧化酶缺乏症":["亞硫酸鹽氧化酶缺乏症"],"高離胺酸血症":["高離胺酸血症"],"NKH（非酮性高甘胺酸血症）":["NKH"],
+ "膽汁滯留／膽酸合成障礙":["PFIC","膽酸合成障礙","Alagille"],"高乳糜微粒血症／脂質營養不良":["高乳糜微粒血症","脂質營養不良"],"GSD（肝醣儲積症）":["GSD"],"ALD":["ALD"],"髮-肝-腸症候群／WAS":["髮-肝-腸症候群","WAS"],"半乳糖血症":["半乳糖血症"],"PDH 缺乏":["PDH缺乏"],"粒線體疾病":["粒線體疾病"],"生物素相關":["生物素相關"]};
+/* 低蛋白食品只在胺基酸代謝／尿素循環疾病（及 Cit 2、GA-2）出現；其餘疾病與「一般／早產」不顯示，「全部」才全部列出 */
+const LPF_OK=["PKU","MSUD","GA-1/GA-2","Cit 1","Cit 2","尿素循環代謝異常","HCU/HCY","TYR（高酪胺酸血症）","高甲硫胺酸血症","亞硫酸鹽氧化酶缺乏症","高離胺酸血症","NKH（非酮性高甘胺酸血症）"];
+/* 無蛋白質的熱量配方（Energivit、Pro-Phree、PFD、Calogen、Fructose Module…）：先天代謝異常公告適應症，胺基酸／尿素循環類疾病通用 */
+const AA_TAGS=[...GEN,...LPF_OK.flatMap(k=>DZDEF[k]||[])];
+const CATS=["嬰幼兒配方","罕病特殊配方","市售副食品","低蛋白食品","熱量補充品"];
+const DISEASES=["PKU","PKU+SI","MSUD","MMA","PA","UCD","瓜胺酸血症","瓜胺酸血症II型","HMG","IVA","3-MCC","白胺酸代謝有機酸血症","HCU","高甲硫胺酸血症","亞硫酸鹽氧化酶缺乏症","GA1","TYR","高離胺酸血症","NKH","胺基酸代謝疾病","先天性代謝異常","FAOD","LC-FAOD","GA2","高乳糜微粒血症","脂質營養不良","PFIC","膽酸合成障礙","Alagille","半乳糖血症","GSD","ALD","PDH缺乏","粒線體疾病","生物素相關","髮-肝-腸症候群","WAS"];
+const STATUSES=["供應中","已改版","停產"];
+const S={items:[],q:"",preset:"PKU",cats:new Set(),subs:new Set(),ages:new Set(),sel:null,mode:"view",sort:null,dir:1,showOld:false,showGen:false,canWrite:false,db:null,loaded:false};
+/* 適用年齡：只分「1 歲以下／1 歲以上」。ages(it) 先由 group 文字推導，再收斂成兩格 */
+const AGES=["嬰兒（0-1歲）","幼兒（1-3歲）","兒童（3-10歲）","青少年及成人"];const [INF,TOD,CHI,ADU]=AGES;
+const AGE_RULES=[[/0-1歲|一歲以下|住院用|出院後|嬰兒配方|母乳/,[INF]],[/嬰幼兒/,[INF,TOD]],[/1–8\s*歲|1–10\s*歲/,[TOD,CHI]],[/一歲以上/,[TOD,CHI,ADU]],[/9–14\s*歲|學齡兒童及青少年/,[CHI,ADU]],[/8\s*歲以上|八歲以上|兒童及成人/,[CHI,ADU]],[/青少年及成人/,[ADU]],[/幼兒/,[TOD]]];
+const AGE_OVER={"pku-pf1":[INF,TOD],"pku-pf2":[TOD,CHI,ADU],"neocate-lcp":[INF],"prosobee":[INF],"alfare":[INF],"pregestimil":[INF],"rcf":[INF],"provimin":[INF],"gen103":[INF],"f002":[TOD,CHI],"pediasure-rtd":[TOD,CHI]};
+function ages(it){if(Array.isArray(it.age))return it.age;if(AGE_OVER[it.id])return AGE_OVER[it.id];const g=it.group||"";for(const[r,v]of AGE_RULES)if(r.test(g))return v;return[]}
+const AGE2=[["u1","1 歲以下"],["o1","1 歲以上"]];
+function age2(it){const a=ages(it),r=[];if(a.includes(INF))r.push("u1");if(a.some(x=>x!==INF))r.push("o1");if(a.length===1&&a[0]===INF&&/使用至三歲/.test(it.group||""))r.push("o1");return r}
+/* 次分類：一般／早產情境才有（依原 Excel 分類）；罕病特殊配方只有「單純熱量／無蛋白質」 */
+const SUB_RULES=[[/^一般配方/,"一般配方"],[/^無乳糖/,"無乳糖"],[/部分水解/,"部分水解蛋白"],[/深度水解/,"深度水解蛋白"],[/^羊奶/,"羊奶"],[/^大豆/,"大豆蛋白"],[/出院後/,"早產兒（出院後）"],[/住院用/,"早產兒（住院用）"]];
+const SUB_GEN=["一般配方","無乳糖","部分水解蛋白","深度水解蛋白","羊奶","大豆蛋白","早產兒（出院後）","早產兒（住院用）"];
+const PF="單純熱量／無蛋白質";
+function sub(it){if(it.sub)return it.sub;const g=it.group||"";for(const[r,v]of SUB_RULES)if(r.test(g))return v;return""}
+const isPF=it=>it.category==="罕病特殊配方"&&((it.n?.pro===0&&!(it.n?.peq>0))||(it.n?.peq===0&&!(it.n?.pro>0)));
+/* 勾選「嬰幼兒配方」時，罕病特殊配方中適用嬰兒期者（Phenex-1、Phenyl-Free 1…）一併納入 */
+const inCat=it=>{if(!S.cats.size)return true;const cs=[it.category,...(it.alsoIn||[])];if(cs.some(c=>S.cats.has(c)))return true;return S.cats.has("嬰幼兒配方")&&it.category==="罕病特殊配方"&&ages(it).includes(INF)};
+/* 一般配方（general:true）在疾病篩選下預設隱藏，「全部」與「一般／早產」一律顯示 */
+const genHidden=()=>!S.showGen&&S.preset!=="全部"&&S.preset!=="一般／早產";
+function subMode(){
+  const only=c=>S.cats.size===1&&S.cats.has(c);
+  if(S.preset==="一般／早產"&&(!S.cats.size||only("嬰幼兒配方")))return"gen";
+  if(only("嬰幼兒配方")&&!genHidden())return"gen";
+  if(only("罕病特殊配方")&&S.preset!=="一般／早產")return"rare";
+  return null;
+}
+const subTest=(it,k)=>k===PF?isPF(it):sub(it)===k;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt=v=>{if(v==null||v==="")return null;const a=Math.abs(v);return a>=100?v.toFixed(0):a>=10?v.toFixed(1):a>=1?v.toFixed(2):v.toFixed(2)};
+function cell(it,k,mult=1){const v=it.n?.[k];if(v==null)return '<span class="na">—</span>';const t=fmt(v*mult);return it.est?.[k]?`<span class="est" title="${esc(it.est[k])}">${t}</span>`:t}
+function basisLabel(it){return it.basisUnit==="份"?"每 1 份":`每 ${it.basisAmount} ${it.basisUnit}`}
+function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2600)}
+
+/* toolbar */
+const isPreset=p=>p in COLS||p in DZDEF;
+$("#preset").innerHTML=[...MAIN,...SPECIAL].map(p=>`<button data-p="${esc(p)}" aria-pressed="${p===S.preset}">${esc(p)}</button>`).join("");
+$("#dzMore").innerHTML='<option value="">其他疾病 ▾</option>'+MORE.map(([g,ps])=>`<optgroup label="${g}">${ps.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join("")}</optgroup>`).join("");
+function syncPresetUI(){[...$("#preset").children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.p===S.preset));const inMore=MORE.some(([,ps])=>ps.includes(S.preset));$("#dzMore").value=inMore?S.preset:"";$("#dzMore").classList.toggle("on",inMore)}
+const setPreset=p=>{S.preset=p;save();syncPresetUI();render()};
+$("#preset").onclick=e=>{const b=e.target.closest("button");if(!b)return;setPreset(b.dataset.p)};
+$("#dzMore").onchange=e=>{if(e.target.value)setPreset(e.target.value);else syncPresetUI()};
+$("#cats").innerHTML='<span class="lbl">類別</span>'+CATS.map(c=>`<button class="chip" data-c="${c}" aria-pressed="false">${c}</button>`).join("");
+$("#cats").onclick=e=>{const b=e.target.closest(".chip");if(!b)return;const c=b.dataset.c;S.cats.has(c)?S.cats.delete(c):S.cats.add(c);b.setAttribute("aria-pressed",S.cats.has(c));render()};
+$("#ages").onclick=e=>{const b=e.target.closest(".chip");if(!b)return;const a=b.dataset.a;S.ages.has(a)?S.ages.delete(a):S.ages.add(a);render()};
+$("#subs").onclick=e=>{const b=e.target.closest(".chip");if(!b)return;const k=b.dataset.s;S.subs.has(k)?S.subs.delete(k):S.subs.add(k);render()};
+$("#q").oninput=e=>{S.q=e.target.value;render()};
+$("#showOld").onchange=e=>{S.showOld=e.target.checked;render()};
+$("#showGen").onchange=e=>{S.showGen=e.target.checked;render()};
+try{const p=localStorage.getItem("preset");if(p&&isPreset(p))S.preset=p}catch(e){}
+syncPresetUI();
+function save(){try{localStorage.setItem("preset",S.preset)}catch(e){}}
+
+function baseFiltered(relax){
+  const toks=S.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const want=DZDEF[S.preset]||null;
+  return S.items.filter(it=>{
+    if(!S.showOld&&it.status&&it.status!=="供應中")return false;
+    if(!inCat(it))return false;
+    if([it.category,...(it.alsoIn||[])].includes("低蛋白食品")&&S.preset!=="全部"&&!LPF_OK.includes(S.preset))return false;
+    if(S.ages.size){const a=age2(it);if(a.length&&!a.some(x=>S.ages.has(x)))return false}
+    if(it.general&&genHidden())return false;
+    if(S.preset==="一般／早產"){
+      if(!(it.general||[it.category,...(it.alsoIn||[])].includes("嬰幼兒配方")||!(it.diseases||[]).length))return false;
+    }
+    else if(want){const d=it.diseases||[];if(d.length){const real=d.filter(x=>!GEN.includes(x));
+      if(LPF_OK.includes(S.preset)&&isPF(it)&&d.some(x=>AA_TAGS.includes(x))){/* 無蛋白質熱量配方：胺基酸／尿素循環類疾病通用 */}
+      else if(real.length){if(!real.some(x=>want.includes(x)))return false}
+      else if(!relax)return false}}   /* 只有泛稱標籤者：只在「全部」或勾選「單純熱量」時出現 */
+    const hay=[it.name,it.brand,it.aliases,it.group,sub(it),it.category,(it.alsoIn||[]).join(" "),(it.diseases||[]).join(" ")].join(" ").toLowerCase();
+    return toks.every(t=>hay.includes(t));
+  });
+}
+function filtered(){
+  const mode=subMode();let r=baseFiltered(mode&&S.subs.has(PF));
+  if(mode&&S.subs.size)r=r.filter(it=>[...S.subs].some(k=>subTest(it,k)));
+  const so=x=>{const i=SUB_GEN.indexOf(sub(x));return i<0?99:i};
+  if(S.sort){const k=S.sort;r.sort((a,b)=>{const x=k==="name"?a.name:a.n?.[k],y=k==="name"?b.name:b.n?.[k];if(x==null)return 1;if(y==null)return -1;return (k==="name"?String(x).localeCompare(y,"zh-Hant"):x-y)*S.dir})}
+  else r.sort((a,b)=>CATS.indexOf(a.category)-CATS.indexOf(b.category)||so(a)-so(b)||(a.group||"").localeCompare(b.group||"","zh-Hant")||a.name.localeCompare(b.name,"zh-Hant"));
+  return r;
+}
+function renderFacets(){
+  /* 年齡鍵筆數：忽略年齡條件、其餘照算；沒有年齡資料的品項兩邊都計 */
+  const mode=subMode();
+  const keep=S.ages;S.ages=new Set();const noAge=baseFiltered(mode&&S.subs.has(PF));S.ages=keep;
+  const ac={u1:0,o1:0};noAge.forEach(it=>{const a=age2(it);if(!a.length){ac.u1++;ac.o1++}else a.forEach(x=>ac[x]++)});
+  $("#ages").innerHTML='<span class="lbl">適用年齡</span>'+AGE2.map(([k,l])=>`<button class="chip" data-a="${k}" aria-pressed="${S.ages.has(k)}">${l} <span class="u">${ac[k]}</span></button>`).join("");
+  /* 次分類：只在一般／早產（gen）或只看罕病特殊配方（rare）時出現；其他情境清空 */
+  const keys=mode==="gen"?SUB_GEN:mode==="rare"?[PF]:[];
+  [...S.subs].forEach(k=>{if(!keys.includes(k))S.subs.delete(k)});
+  if(!keys.length){$("#subs").innerHTML="";return}
+  const base=baseFiltered(false),sc={};
+  keys.forEach(k=>sc[k]=(k===PF?baseFiltered(true):base).filter(it=>subTest(it,k)).length);
+  const show=keys.filter(k=>sc[k]||S.subs.has(k));
+  $("#subs").innerHTML=show.length?'<span class="lbl">次分類</span>'+show.map(k=>`<button class="chip" data-s="${esc(k)}" aria-pressed="${S.subs.has(k)}">${esc(k)} <span class="u">${sc[k]}</span></button>`).join(""):"";
+}
+function render(){
+  renderFacets();
+  const cols=colsOf(S.preset);
+  const arrow=k=>S.sort===k?(S.dir>0?" ▲":" ▼"):"";
+  $("#thead").innerHTML=`<tr><th class="l" data-k="name">品項${arrow("name")}</th><th class="l">基準</th>${cols.map(k=>`<th data-k="${k}">${NUT[k][1]} <span class="u">${NUT[k][2]}</span>${arrow(k)}</th>`).join("")}</tr>`;
+  const r=filtered();
+  $("#tbody").innerHTML=r.map(it=>`<tr data-id="${it.id}" class="${S.sel===it.id?"sel":""}"><td class="l name"><div class="nm">${it.img?`<img class="th" loading="lazy" src="${esc(it.img)}" alt="" onerror="this.remove()">`:""}<div>${esc(it.name)}${it.status&&it.status!=="供應中"?` <span class="pill off">${esc(it.status)}</span>`:""}${(it.diseases||[]).map(d=>` <span class="pill ok">${esc(d)}</span>`).join("")}<span class="sub">${esc([it.brand,[it.category,...(it.alsoIn||[])].join("／"),it.group].filter(Boolean).join("・"))}</span></div></div></td><td class="l small">${basisLabel(it)}</td>${cols.map(k=>`<td class="num">${cell(it,k)}</td>`).join("")}</tr>`).join("");
+  const em=$("#empty");
+  if(!S.loaded){em.hidden=false}
+  else if(!S.items.length){em.hidden=false;em.textContent=S.canWrite?"資料庫還是空的。按右上角「新增品項」加入第一筆。":"資料庫還是空的。"}
+  else if(!r.length){em.hidden=false;em.textContent=`找不到符合「${S.q}」的品項。${S.canWrite?"可以按「新增品項」登錄。":""}`}
+  else em.hidden=true;
+  const hidGen=genHidden()?S.items.filter(it=>it.general&&(S.showOld||!it.status||it.status==="供應中")).length:0;
+  $("#count").textContent=S.loaded?`共 ${S.items.length} 筆・顯示 ${r.length} 筆${S.preset!=="全部"?`（${S.preset} 及通用品項）`:""}${hidGen?`・另有 ${hidGen} 筆一般配方未顯示`:""}`:"載入中…";
+}
+$("#thead").onclick=e=>{const th=e.target.closest("th[data-k]");if(!th)return;const k=th.dataset.k;if(S.sort===k){if(S.dir>0)S.dir=-1;else{S.sort=null;S.dir=1}}else{S.sort=k;S.dir=k==="name"?1:-1}render()};
+$("#tbody").onclick=e=>{const tr=e.target.closest("tr[data-id]");if(!tr)return;S.sel=tr.dataset.id;S.mode="view";render();renderSheet();if(innerWidth<=980)$("#sheet").scrollIntoView({behavior:"smooth",block:"start"})};
+
+/* detail sheet */
+function renderSheet(){
+  const el=$("#sheet");
+  if(S.mode==="edit"||S.mode==="new"){return renderForm()}
+  const it=S.items.find(x=>x.id===S.sel);
+  if(!it){el.innerHTML='<div class="empty">點選左側品項，查看完整營養素並換算份量。</div>';return}
+  const keys=NUTS.map(n=>n[0]).filter(k=>it.n?.[k]!=null);
+  const sv=(it.servings||[])[0];
+  const svMult=sv&&it.basisUnit!=="份"?sv.amount/it.basisAmount:null;
+  const estList=Object.entries(it.est||{});
+  /* 每 100 kcal 換算：只在標記 per100k 的早產兒／未滿一歲配方顯示 */
+  const k100=it.per100k&&it.n?.kcal?100/it.n.kcal:null;
+  const specList=it.spec?[it.spec.hydro?`水解程度：${esc(it.spec.hydro)}`:"",it.spec.psrc?`蛋白質來源：${esc(it.spec.psrc)}`:"",it.spec.whey?`乳清:酪蛋白 ${esc(it.spec.whey)}`:"",it.spec.mct!=null&&it.spec.mct!==""?`MCT 佔脂肪 ${it.spec.mct}%`:""].filter(Boolean):[];
+  const missing=colsOf(S.preset).filter(k=>it.n?.[k]==null).map(k=>NUT[k][1]);
+  const unitOpts=[];
+  if(it.basisUnit==="份")unitOpts.push(["份",1,"份"]);
+  else{unitOpts.push([it.basisUnit,1,it.basisUnit]);(it.servings||[]).forEach((s,i)=>unitOpts.push(["sv"+i,s.amount,s.label]));if(it.prep?.scoopG)unitOpts.push(["scoop",it.prep.scoopG,"匙（"+it.prep.scoopG+" g）"])}
+  el.innerHTML=`
+   <div><div class="row" style="gap:6px;margin-bottom:6px"><span class="pill ${it.status==="供應中"?"ok":"off"}">${esc(it.status||"供應中")}</span>${[it.category,...(it.alsoIn||[])].map(c=>`<span class="pill">${esc(c)}</span>`).join("")}${it.group?`<span class="pill">${esc(it.group)}</span>`:""}${sub(it)?`<span class="pill">${esc(sub(it))}</span>`:""}${ages(it).map(x=>`<span class="pill">${esc(x)}</span>`).join("")}${it.general?'<span class="pill">一般配方</span>':""}${(it.diseases||[]).map(d=>`<span class="pill ok">${esc(d)}</span>`).join("")}</div>
+   ${it.img?`<img class="pic" src="${esc(it.img)}" alt="${esc(it.name)}" onerror="this.remove()">`:""}
+   <h2>${esc(it.name)}</h2>${it.brand?`<div class="small">${esc(it.brand)}</div>`:""}</div>
+   ${it.note?`<div class="note">${esc(it.note)}</div>`:""}
+   ${missing.length?`<div class="note plain">${esc(S.preset)} 需要但尚無資料：${missing.join("、")}</div>`:""}
+   <div class="calc"><h3 style="margin:0">份量換算</h3>
+     <div class="row"><input id="amt" type="number" min="0" step="any" value="${sv?1:it.basisAmount}" aria-label="份量">
+       <select id="unit" aria-label="單位">${unitOpts.map((u,i)=>`<option value="${i}" ${sv&&i===1?"selected":""}>${esc(u[2])}</option>`).join("")}</select></div>
+     ${(it.prep||it.osmo?.length)&&it.basisUnit==="g"?`<div class="row small"><label>加水 <input id="water" type="number" min="0" step="any" style="width:80px" placeholder="${it.prep.stdWaterMl||""}"> mL</label><label>沖泡後總量 <input id="vol" type="number" min="0" step="any" style="width:80px" placeholder="選填"> mL</label></div>`:""}
+     <div class="out" id="out"></div><div class="small" id="outNote"></div></div>
+   <div><h3>營養成分</h3><div class="kv${k100?" k4":""}">
+     <div class="h">營養素</div><div class="h v">${basisLabel(it)}</div><div class="h v">${sv&&svMult?esc(sv.label):"—"}</div>${k100?'<div class="h v">每 100 kcal</div>':""}
+     ${groupRows(keys,k=>`<div>${NUT[k][1]} <span class="small">${NUT[k][2]}</span></div><div class="v">${cell(it,k)}</div><div class="v">${svMult?cell(it,k,svMult):""}</div>${k100?`<div class="v">${k==="kcal"?"100":cell(it,k,k100)}</div>`:""}`)||'<div class="small" style="grid-column:1/-1">尚無營養素資料</div>'}
+   </div>${k100?`<div class="small" style="padding-top:5px">${it.n.pro!=null?`蛋白質 ${fmt(it.n.pro*k100)} g/100 kcal`:it.n.peq!=null?`蛋白質當量 ${fmt(it.n.peq*k100)} g/100 kcal`:""}${it.n.ca!=null&&it.n.phos?`${it.n.pro!=null||it.n.peq!=null?"・":""}鈣磷比 ${(it.n.ca/it.n.phos).toFixed(2)}:1`:""}</div>`:""}</div>
+   ${it.prep?`<div><h3>沖泡資訊</h3><div class="small">${esc(it.prep.text||"")}${it.prep.scoopG?`<br>官方一匙 ${it.prep.scoopG} g`:""}${it.prep.stdPowderG?`・標準 ${it.prep.stdPowderG} g 粉 + ${it.prep.stdWaterMl||"?"} mL 水`:""}</div></div>`:""}
+   ${specList.length?`<div><h3>配方規格</h3><div class="small">${specList.join("<br>")}</div></div>`:""}
+   ${it.osmo?.length?`<div><h3>官方滲透壓</h3><div class="small">${it.osmo.map(osmoRefText).join("<br>")}</div></div>`:""}
+   ${(it.servings||[]).length?`<div><h3>常用份量</h3><div class="small">${it.servings.map(s=>`${esc(s.label)} = ${s.amount} ${esc(it.basisUnit)}`).join("<br>")}</div></div>`:""}
+   ${estList.length?`<div><h3>估算說明</h3><div class="small">${estList.map(([k,v])=>`${NUT[k]?.[1]||k}：${esc(v)}`).join("<br>")}</div></div>`:""}
+   <div><h3>資料管理</h3><div class="small">版本 ${esc(it.version||"1")}・最後查核 ${esc(it.checkedAt||"未查核")}・更新 ${esc(it.updatedAt||"")}<br>來源：${esc(it.source||"未填")}</div></div>
+   ${S.canWrite?`<div class="row"><button class="btn" id="editBtn">編輯</button><button class="btn" id="verBtn">建立新版本</button><button class="btn" id="checkBtn">標記今天已查核</button></div>`:""}`;
+  const calc=()=>{
+    const a=parseFloat($("#amt").value)||0,u=unitOpts[+$("#unit").value];
+    const base=a*u[1];const m=it.basisUnit==="份"?a:base/it.basisAmount;
+    const show=[...new Set([...colsOf(S.preset).filter(k=>it.n?.[k]!=null),"kcal","pro"])].filter(k=>it.n?.[k]!=null);
+    $("#out").innerHTML=show.map(k=>`<div><b>${it.est?.[k]?`<span class="est">${fmt(it.n[k]*m)}</span>`:fmt(it.n[k]*m)}</b><span>${NUT[k][1]} ${NUT[k][2]}</span></div>`).join("");
+    let note=it.basisUnit!=="份"&&u[0]!==it.basisUnit?`= ${fmt(base)} ${it.basisUnit}`:"";
+    let osmoLine="";
+    if($("#water")){const w=parseFloat($("#water").value),v=parseFloat($("#vol").value);const vol=v||w;
+      if(vol&&it.n?.kcal!=null){note+=`${note?"・":""}濃度約 ${(it.n.kcal*m/vol).toFixed(2)} kcal/mL（以${v?"沖泡後總量":"加水量"}計${v?"":"，偏高估"}）`;
+        if(it.n?.pro!=null)note+=`・蛋白質 ${(it.n.pro*m/vol*100).toFixed(2)} g/100 mL`}
+      const o=osmoEst(it,base,w,v);if(o)osmoLine=o;else if(it.osmo?.some(r=>r.p))osmoLine="輸入加水量或沖泡後總量，即可估算滲透壓";}
+    $("#outNote").innerHTML=esc(note)+(osmoLine?`<div class="osmo">${osmoLine}</div>`:"");
+  };
+  ["amt","unit","water","vol"].forEach(id=>{const x=document.getElementById(id);if(x)x.oninput=calc});calc();
+  if(S.canWrite){$("#editBtn").onclick=()=>{S.mode="edit";renderSheet()};$("#verBtn").onclick=()=>{S.mode="edit";S.asVersion=true;renderSheet()};
+    $("#checkBtn").onclick=async()=>{const d=new Date().toISOString().slice(0,10);try{await S.db.doc("items/"+it.id).update({checkedAt:d});toast("已標記查核日期 "+d)}catch(e){fail(e)}}}
+}
+
+/* 滲透壓估算：以官方沖泡條件換算「每克粉的滲透量」，再套用到使用者的粉量與水量。
+   粉末體積以每克 0.7 mL 估算（加水至總量時用來推算實際水量）。 */
+const DISP=0.7;
+function osmoRefText(r){
+  const cond=r.p?`${r.p} g 粉`+(r.w?` + ${r.w} mL 水`:"")+(r.v?`${r.w?"，":" 加水至 "}${r.v} mL`:""):"即飲／原液";
+  return `${r.val} ${esc(r.unit)}（${cond}）${r.src?"・"+esc(r.src):""}`;
+}
+function osmoPerG(r){ // mOsm per g powder
+  if(!r.p)return null;
+  if(r.unit==="mOsm/L"){const vol=r.v??(r.w!=null?r.w+DISP*r.p:null);return vol?r.val*vol/1000/r.p:null}
+  const water=r.w??(r.v!=null?r.v-DISP*r.p:null);return water?r.val*water/1000/r.p:null;
+}
+function osmoEst(it,P,W,V){
+  const refs=(it.osmo||[]).filter(r=>r.p&&osmoPerG(r));
+  if(!refs.length||!P)return null;
+  const water=W||(V?V-DISP*P:null);if(!water||water<=0)return null;
+  const conc=P/water;
+  const refConc=r=>r.p/(r.w??(r.v!=null?r.v-DISP*r.p:r.p));
+  const ref=refs.reduce((a,b)=>Math.abs(refConc(b)-conc)<Math.abs(refConc(a)-conc)?b:a);
+  const k=osmoPerG(ref);const osm=k*P/(water/1000);
+  const far=Math.abs(conc/refConc(ref)-1)>0.25;
+  let s=`滲透壓估算約 <b>${Math.round(osm)} mOsm/kg</b>`;
+  if(V)s+=`（約 ${Math.round(k*P/(V/1000))} mOsm/L）`;
+  s+=`・依官方 ${ref.val} ${esc(ref.unit)}（${ref.p} g 粉）等比例推算${W?"":"，水量由總量扣除粉體積估計"}`;
+  if(far)s+=`<br><span class="est-txt">你的濃度與官方相差超過 25%，高濃度時實際值通常更高，僅供參考</span>`;
+  return s;
+}
+
+function renderForm(){
+  const isNew=S.mode==="new";const it=isNew?{category:"嬰幼兒配方",basisAmount:100,basisUnit:"g",n:{},est:{},status:"供應中",version:"1",servings:[],diseases:[]}:S.items.find(x=>x.id===S.sel);
+  const asVer=!isNew&&S.asVersion;
+  const sv=(it.servings||[]).map(s=>`${s.label}=${s.amount}`).join("\n");
+  $("#sheet").innerHTML=`<h2>${isNew?"新增品項":asVer?"建立新版本":"編輯品項"}</h2>
+  ${asVer?'<div class="note plain">儲存後會新增一筆新版本，原本這筆標記為「已改版」並保留，舊的計算紀錄仍查得到當時數值。</div>':""}
+  <form class="ed" id="ed">
+   <label>品名 *<input name="name" required value="${esc(it.name)}"></label>
+   <div class="g2"><label>品牌／廠商<input name="brand" value="${esc(it.brand)}"></label><label>別名（空格分隔，供搜尋）<input name="aliases" value="${esc(it.aliases)}"></label></div>
+   <div class="g2"><label>類別<select name="category">${CATS.map(c=>`<option ${c===it.category?"selected":""}>${c}</option>`).join("")}</select></label><label>食物群／子類<input name="group" value="${esc(it.group)}"></label></div>
+   <fieldset><legend>同時列在其他類別</legend><div class="row">${CATS.map(c=>`<label class="small" style="flex-direction:row;gap:3px"><input type="checkbox" name="also" value="${c}" ${(it.alsoIn||[]).includes(c)?"checked":""}>${c}</label>`).join("")}</div></fieldset>
+   <fieldset><legend>適用疾病（特殊配方用）</legend><div class="row">${DISEASES.map(d=>`<label class="small" style="flex-direction:row;gap:3px"><input type="checkbox" name="dz" value="${d}" ${(it.diseases||[]).includes(d)?"checked":""}>${d}</label>`).join("")}</div></fieldset>
+   <fieldset><legend>配方規格（一般／早產／嬰幼兒配方用）</legend>
+     <div class="row" style="gap:12px"><label class="small" style="flex-direction:row;gap:3px"><input type="checkbox" name="general" ${it.general?"checked":""}>一般配方（無代謝適應症，疾病篩選時預設隱藏）</label>
+       <label class="small" style="flex-direction:row;gap:3px"><input type="checkbox" name="per100k" ${it.per100k?"checked":""}>顯示每 100 kcal（早產兒／未滿一歲）</label></div>
+     <div class="g2" style="margin-top:6px"><label>水解程度<select name="hydro"><option value=""></option>${["完整蛋白","部分水解","深度水解","游離胺基酸"].map(h=>`<option ${h===it.spec?.hydro?"selected":""}>${h}</option>`).join("")}</select></label><label>蛋白質來源<input name="psrc" value="${esc(it.spec?.psrc)}" placeholder="乳清／酪蛋白／大豆／米"></label></div>
+     <div class="g2"><label>乳清:酪蛋白<input name="whey" value="${esc(it.spec?.whey)}" placeholder="60:40"></label><label>MCT 佔脂肪 %<input name="mct" type="number" step="any" value="${it.spec?.mct??""}"></label></div></fieldset>
+   <div class="g2"><label>基準量<input name="basisAmount" type="number" step="any" value="${it.basisAmount??100}"></label><label>基準單位<select name="basisUnit">${["g","mL","份"].map(u=>`<option ${u===it.basisUnit?"selected":""}>${u}</option>`).join("")}</select></label></div>
+   <label>常用份量（每行一個：名稱=量，量以基準單位計）<textarea name="servings" rows="2" placeholder="1 匙=4.6&#10;1 份=20">${esc(sv)}</textarea></label>
+   <fieldset><legend>沖泡資訊（配方奶才需要）</legend><div class="g3"><label>一匙 g<input name="scoopG" type="number" step="any" value="${it.prep?.scoopG??""}"></label><label>標準粉量 g<input name="stdPowderG" type="number" step="any" value="${it.prep?.stdPowderG??""}"></label><label>標準水量 mL<input name="stdWaterMl" type="number" step="any" value="${it.prep?.stdWaterMl??""}"></label></div>
+     <label style="margin-top:6px">沖泡說明<input name="prepText" value="${esc(it.prep?.text)}"></label></fieldset>
+   <label>官方滲透壓（每行一組：粉量 g, 加水 mL, 沖泡後總量 mL, 數值, 單位 kg 或 L, 說明；不知道的留空。液體產品粉量留空）<textarea name="osmo" rows="2" placeholder="22, , 100, 390, kg, 官方 1 kcal/mL">${esc((it.osmo||[]).map(r=>[r.p??"",r.w??"",r.v??"",r.val,r.unit==="mOsm/L"?"L":"kg",r.src||""].join(", ")).join("\n"))}</textarea></label>
+   <fieldset><legend>營養素（每個基準量）・勾選＝估算值</legend><div class="ng">${groupRows(NUTS.map(n=>n[0]),k=>{const [,l,u]=NUT[k];return `<span>${l} <span class="small">${u}</span></span><input type="number" step="any" name="n_${k}" value="${it.n?.[k]??""}"><label class="chk"><input type="checkbox" name="e_${k}" ${it.est?.[k]?"checked":""}>估</label>`})}</div>
+     <label style="margin-top:6px">估算方式說明<input name="estNote" value="${esc(Object.values(it.est||{})[0]||"")}" placeholder="例：蛋白質×50 mg 估算"></label></fieldset>
+   <div class="g3"><label>狀態<select name="status">${STATUSES.map(s=>`<option ${s===(asVer?"供應中":it.status)?"selected":""}>${s}</option>`).join("")}</select></label><label>版本<input name="version" value="${esc(asVer?String((parseInt(it.version)||1)+1):it.version)}"></label><label>查核日期<input name="checkedAt" type="date" value="${esc(asVer?new Date().toISOString().slice(0,10):it.checkedAt)}"></label></div>
+   <label>資料來源<input name="source" value="${esc(it.source)}" placeholder="例：廠商產品資料表 2026-10 版"></label>
+   <label>備註<textarea name="note" rows="2">${esc(it.note)}</textarea></label>
+   <div class="row"><button class="btn primary" type="submit">${asVer?"儲存新版本":"儲存"}</button><button class="btn" type="button" id="cancel">取消</button>
+     ${!isNew&&!asVer?'<span style="flex:1"></span><button class="btn danger" type="button" id="del">刪除</button>':""}</div>
+  </form>`;
+  $("#cancel").onclick=()=>{S.mode="view";S.asVersion=false;renderSheet()};
+  const del=$("#del");if(del)del.onclick=async()=>{if(!del.dataset.arm){del.dataset.arm=1;del.textContent="再按一次確認刪除";return}
+    try{await S.db.doc("items/"+it.id).delete();S.sel=null;S.mode="view";toast("已刪除");renderSheet()}catch(e){fail(e)}};
+  $("#ed").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target);const num=k=>{const v=f.get(k);return v===""||v==null?null:parseFloat(v)};
+    const n={},est={};const en=f.get("estNote")||"估算值";
+    NUTS.forEach(([k])=>{const v=num("n_"+k);if(v!=null&&!isNaN(v)){n[k]=v;if(f.get("e_"+k))est[k]=en}});
+    const servings=String(f.get("servings")||"").split("\n").map(l=>l.split("=")).filter(p=>p.length===2&&p[0].trim()&&!isNaN(parseFloat(p[1]))).map(p=>({label:p[0].trim(),amount:parseFloat(p[1])}));
+    const prep={scoopG:num("scoopG"),stdPowderG:num("stdPowderG"),stdWaterMl:num("stdWaterMl"),text:f.get("prepText")||""};
+    const hasPrep=prep.scoopG||prep.stdPowderG||prep.stdWaterMl||prep.text;
+    const doc={name:f.get("name").trim(),brand:f.get("brand")||"",aliases:f.get("aliases")||"",category:f.get("category"),alsoIn:f.getAll("also").filter(c=>c!==f.get("category")),group:f.get("group")||"",diseases:f.getAll("dz"),
+      basisAmount:num("basisAmount")||100,basisUnit:f.get("basisUnit"),servings,n,est,status:f.get("status"),version:f.get("version")||"1",
+      source:f.get("source")||"",checkedAt:f.get("checkedAt")||"",note:f.get("note")||"",updatedAt:new Date().toISOString().slice(0,10)};
+    if(hasPrep)doc.prep=prep;
+    if(it.img)doc.img=it.img;
+    if(f.get("general"))doc.general=true;
+    if(f.get("per100k"))doc.per100k=true;
+    const spec={hydro:f.get("hydro")||"",psrc:f.get("psrc")||"",whey:f.get("whey")||"",mct:num("mct")};
+    if(spec.hydro||spec.psrc||spec.whey||spec.mct!=null)doc.spec=spec;
+    const pn=s=>{s=String(s??"").trim();return s===""||isNaN(parseFloat(s))?null:parseFloat(s)};
+    doc.osmo=String(f.get("osmo")||"").split("\n").map(l=>l.split(/[,，]/)).filter(p=>pn(p[3])!=null).map(p=>({p:pn(p[0]),w:pn(p[1]),v:pn(p[2]),val:pn(p[3]),unit:/l/i.test(p[4]||"")&&!/kg/i.test(p[4]||"")?"mOsm/L":"mOsm/kg",src:(p.slice(5).join(",")||"").trim()}));
+    try{
+      if(isNew){const ref=S.db.collection("items").doc();await ref.set(doc);S.sel=ref.id;toast("已新增")}
+      else if(asVer){const ref=S.db.collection("items").doc();doc.prevId=it.id;await ref.set(doc);await S.db.doc("items/"+it.id).update({status:"已改版",nextId:ref.id});S.sel=ref.id;toast("已建立新版本，舊版標記為已改版")}
+      else{await S.db.doc("items/"+it.id).set({...doc,...(it.prevId?{prevId:it.prevId}:{}),...(it.nextId?{nextId:it.nextId}:{})});toast("已儲存")}
+      S.mode="view";S.asVersion=false;renderSheet();
+    }catch(err){fail(err)}};
+}
+function fail(e){if(e?.code==="invalid_argument"){S.canWrite=false;toast("你目前只有檢視權限，無法修改資料");refreshWrite()}else if(e?.code==="quota_exceeded")toast("資料庫容量已滿，請刪除不用的品項");else toast("儲存失敗，請稍後再試")}
+function refreshWrite(){$("#addBtn").hidden=!S.canWrite;render();renderSheet()}
+$("#addBtn").onclick=()=>{S.mode="new";S.asVersion=false;renderSheet();if(innerWidth<=980)$("#sheet").scrollIntoView({behavior:"smooth"})};
+
+/* CSV export */
+async function exportCsv(){
+  
+  const head=["品名","品牌","類別","食物群","適用疾病","一般配方","基準量","基準單位",...NUTS.map(n=>`${n[1]}(${n[2]})`),"水解程度","蛋白質來源","乳清酪蛋白比","MCT佔脂肪%","估算欄位","常用份量","一匙g","狀態","版本","查核日期","來源","備註"];
+  const q=v=>{v=v??"";v=String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const lines=[head.map(q).join(",")].concat(filtered().map(it=>[it.name,it.brand,it.category,it.group,(it.diseases||[]).join("/"),it.general?"是":"",it.basisAmount,it.basisUnit,...NUTS.map(n=>it.n?.[n[0]]??""),it.spec?.hydro??"",it.spec?.psrc??"",it.spec?.whey??"",it.spec?.mct??"",Object.keys(it.est||{}).map(k=>NUT[k]?.[1]||k).join("/"),(it.servings||[]).map(s=>s.label+"="+s.amount).join("; "),it.prep?.scoopG??"",it.status,it.version,it.checkedAt,it.source,it.note].map(q).join(",")));
+  try{if(window.claude?.use){const dl=await window.claude.use("downloads");if(dl){await dl.save({filename:`營養主資料庫_${new Date().toISOString().slice(0,10)}.csv`,data:"\ufeff"+lines.join("\r\n")});return}}const blob=new Blob(["\ufeff"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`營養主資料庫_${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}catch(e){toast("此環境無法下載檔案")}
+}
+$("#exportBtn").onclick=exportCsv;
+
+
+/* boot：可編輯版。資料存在 artifact 資料庫 collection「items」；
+   無法連線資料庫時（例如 GitHub Pages）改讀 seed.json 快照，唯讀。 */
+{
+const SNAP="2026-11-12";
+let seed=null;
+const loadSeed=async()=>{if(!seed){const r=await fetch("seed.json");if(!r.ok)throw new Error("seed");seed=await r.json()}return seed};
+async function readOnly(msg){
+  S.db=null;S.canWrite=false;
+  try{S.items=await loadSeed();S.loaded=true;$("#exportBtn").hidden=false;$("#addBtn").hidden=true;$("#mode").textContent=msg;render();renderSheet()}
+  catch(e){S.loaded=true;S.items=[];render();const em=$("#empty");em.hidden=false;em.textContent="無法載入資料。"}
+}
+/* 首次匯入：資料庫是空的、且目前使用者可寫入時，出現「匯入快照」按鈕 */
+S.importing=false;
+function renderImport(){
+  const box=$("#importBox");
+  const show=S.db&&S.canWrite&&S.loaded&&(S.importing||(S.dbEmpty&&!S.items.length));
+  box.hidden=!show;if(!show)return;
+  if(S.importing)return;
+  box.innerHTML=`<div>資料庫目前是空的。要匯入 ${SNAP} 快照的品項（含產品圖）嗎？匯入一次即可，之後的修改都直接存在資料庫。</div><div class="row" style="margin-top:6px"><button class="btn primary" id="impBtn">匯入快照資料</button><span class="small" id="impMsg"></span></div>`;
+  $("#impBtn").onclick=runImport;
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function runImport(){
+  const btn=$("#impBtn"),msg=$("#impMsg");btn.disabled=true;S.importing=true;
+  let list;try{list=await loadSeed()}catch(e){msg.textContent="讀不到快照檔，請稍後再試";btn.disabled=false;S.importing=false;return}
+  const have=new Set(S.items.map(x=>x.id));let done=0,skip=0;
+  for(const it of list){
+    if(have.has(it.id)){skip++;continue}
+    const {id,...doc}=it;let tries=0;
+    for(;;){
+      try{await S.db.doc("items/"+id).set(doc);break}
+      catch(e){
+        if((e?.code==="resource_exhausted"||e?.code==="unavailable")&&tries<6){tries++;msg.textContent=`伺服器忙碌，稍候重試…（${done}/${list.length}）`;await sleep(1500*tries);continue}
+        S.importing=false;btn.disabled=false;
+        msg.textContent=e?.code==="invalid_argument"?"你沒有寫入權限，無法匯入":e?.code==="quota_exceeded"?"資料庫容量已滿":`匯入中斷（已完成 ${done} 筆），再按一次會從中斷處繼續`;return}
+    }
+    done++;msg.textContent=`匯入中… ${done+skip}/${list.length}`;
+  }
+  S.importing=false;S.dbEmpty=false;toast(`匯入完成：新增 ${done} 筆`);renderImport();
+}
+(async()=>{
+  const em=$("#empty");
+  const slow=setTimeout(()=>{if(!S.loaded)em.textContent="資料庫連線較慢，仍在嘗試…"},10000);
+  let db=null;try{db=window.claude?.use?await window.claude.use("db"):null}catch(e){}
+  if(!db){clearTimeout(slow);return readOnly(`無法連線資料庫，顯示 ${SNAP} 快照（唯讀）`)}
+  S.db=db;
+  let user=null;try{user=await window.claude.use("user")}catch(e){}
+  let w=null;try{w=user?await user.can("data.write"):null}catch(e){}
+  S.canWrite=w!==false;   /* null＝平台未告知：先保留編輯，寫入被拒時 fail() 會改成唯讀 */
+  db.collection("items").onSnapshot(snap=>{
+    if(!snap.metadata.fromCache)clearTimeout(slow);
+    S.items=snap.docs.map(d=>({...d.data(),id:d.id}));
+    S.dbEmpty=snap.empty&&!snap.metadata.fromCache;
+    S.loaded=true;$("#exportBtn").hidden=false;$("#addBtn").hidden=!S.canWrite;
+    $("#mode").textContent=S.canWrite?"資料存在雲端資料庫，修改後所有使用者即時可見。":"你目前只有檢視權限。";
+    render();if(S.mode==="view")renderSheet();renderImport();
+  },err=>{clearTimeout(slow);readOnly(`資料庫連線中斷，改顯示 ${SNAP} 快照（唯讀）`)});
+})();
+/* 檢視權限被拒時（fail→refreshWrite）一併收起匯入按鈕 */
+const _rw=refreshWrite;refreshWrite=function(){_rw();renderImport()};
+}
+</script>
